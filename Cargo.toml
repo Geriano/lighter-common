@@ -1,0 +1,67 @@
+[package]
+name = "lighter-common"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+resolver = "2"
+members = [
+    "derives",
+    "macros",
+]
+
+[features]
+default = ["postgres"]
+postgres = ["sea-orm/sqlx-postgres"]
+sqlite = ["sea-orm/sqlx-sqlite"]
+
+[dependencies]
+lighter-common-derives = { workspace = true }
+lighter-common-macros = { workspace = true }
+
+actix = { workspace = true }
+actix-cors = { workspace = true }
+actix-web = { workspace = true }
+awc = { workspace = true }
+bs58 = { workspace = true }
+chrono = { workspace = true }
+dotenvy = { workspace = true }
+hex = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
+sea-orm = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+utoipa = { workspace = true }
+utoipa-swagger-ui = { workspace = true }
+uuid = { workspace = true }
+
+[workspace.dependencies]
+lighter-common-derives = { path = "derives" }
+lighter-common-macros = { path = "macros" }
+
+actix = "0.13.1"
+actix-cors = "0.6.5"
+actix-web = { version = "4.4.1", features = ["rustls-0_21"] }
+awc = "3.3.0"
+bs58 = "0.5.0"
+chrono = { version = "0.4.33", features = ["serde"] }
+dotenvy = "0.15.7"
+hex = "0.4.3"
+proc-macro2 = "1.0.78"
+quote = "1.0.35"
+sea-orm = { version = "0.12.12", features = ["runtime-tokio-native-tls"] }
+serde = { version = "1.0.196", features = ["derive"] }
+serde_json = "1.0.113"
+sha2 = "0.10.8"
+syn = { version = "2.0.48", features = ["full"] }
+tracing = { version = "0.1.40", features = ["log"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "chrono", "json", "serde", "serde_json", "tracing-serde"] }
+utoipa = { version = "4.2.0", features = ["actix_extras", "chrono", "uuid"] }
+utoipa-swagger-ui = { version = "6.0.0", features = ["actix-web"] }
+uuid = { version = "1.7.0", features = ["serde", "v4"] }
+rustls = "0.21"
+rustls-pemfile = "1.0.0"
