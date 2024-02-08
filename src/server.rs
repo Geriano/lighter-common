@@ -66,7 +66,7 @@ impl Server {
 
         let addr = SocketAddr::from(([0, 0, 0, 0], self.port));
         let database = self.database.clone();
-        let server = HttpServer::new(move || {
+        let factory = move || {
             let payload = PayloadConfig::new(MAX);
             let path = PathConfig::default();
             let json = JsonConfig::default().limit(MAX);
@@ -81,10 +81,9 @@ impl Server {
                 .app_data(form)
                 .app_data(Data::new(database.clone()))
                 .configure(callback)
-        })
-        .workers(4)
-        .bind(addr)?
-        .run();
+        };
+
+        let server = HttpServer::new(factory).workers(4).bind(addr)?.run();
 
         Ok(server)
     }
@@ -96,7 +95,7 @@ impl Server {
         let addr = SocketAddr::from(([0, 0, 0, 0], self.port));
         let database = self.database.clone();
         let tls = self.tls.unwrap();
-        let server = HttpServer::new(move || {
+        let factory = move || {
             let payload = PayloadConfig::new(MAX);
             let path = PathConfig::default();
             let json = JsonConfig::default().limit(MAX);
@@ -111,10 +110,22 @@ impl Server {
                 .app_data(form)
                 .app_data(Data::new(database.clone()))
                 .configure(callback)
-        })
-        .workers(4)
-        .bind_rustls_021(addr, tls)?
-        .run();
+        };
+
+        let f = factory.clone();
+
+        actix::spawn(async move {
+            HttpServer::new(f)
+                .workers(4)
+                .bind(SocketAddr::from(([0, 0, 0, 0], 80)))?
+                .run()
+                .await
+        });
+
+        let server = HttpServer::new(factory)
+            .workers(4)
+            .bind_rustls_021(addr, tls)?
+            .run();
 
         Ok(server)
     }
