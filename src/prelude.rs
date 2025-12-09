@@ -12,6 +12,8 @@ pub use sea_orm::{
 };
 pub use uuid::{self, Uuid};
 
+pub use crate::config::*;
+pub use crate::errors::{AppError, AuthError, CacheError, DatabaseError, HttpError, ValidationError};
 pub use crate::hash::Hash;
 pub use crate::responses::*;
 pub use crate::server::Server;
