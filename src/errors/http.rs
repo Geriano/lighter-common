@@ -312,6 +312,52 @@ impl From<AppError> for HttpError {
     }
 }
 
+impl From<anyhow::Error> for HttpError {
+    fn from(err: anyhow::Error) -> Self {
+        // Log the full error chain for debugging
+        tracing::error!("Converting anyhow error to HttpError: {:?}", err);
+
+        // Get the error message before any downcast attempts
+        let error_msg = err.to_string();
+        let error_msg_lower = error_msg.to_lowercase();
+
+        // Try to downcast to known error types
+        // Note: anyhow::Error can only be downcast once, consuming the error
+        // We prioritize DatabaseError since it's most common
+        if let Ok(db_err) = err.downcast::<DatabaseError>() {
+            return HttpError::from(db_err);
+        }
+
+        // If downcast failed, err is consumed. Use message-based pattern matching
+        // This approach works because services use anyhow's context() which preserves
+        // the error message through the chain
+
+        // Check error message for specific patterns
+        if error_msg_lower.contains("not found") {
+            return HttpError::not_found(error_msg);
+        }
+
+        if error_msg_lower.contains("validation failed") || error_msg_lower.contains("invalid input") {
+            return HttpError::bad_request(error_msg);
+        }
+
+        if error_msg_lower.contains("unauthorized") || error_msg_lower.contains("invalid credentials") {
+            return HttpError::unauthorized(error_msg);
+        }
+
+        if error_msg_lower.contains("forbidden") || error_msg_lower.contains("insufficient permissions") {
+            return HttpError::forbidden(error_msg);
+        }
+
+        if error_msg_lower.contains("rate limit") || error_msg_lower.contains("too many") {
+            return HttpError::too_many_requests(error_msg);
+        }
+
+        // Default to internal server error
+        HttpError::internal_server_error(error_msg)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -529,5 +575,64 @@ mod tests {
         let response = err.error_response();
 
         assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    #[test]
+    fn test_from_anyhow_database_error() {
+        let db_err = DatabaseError::NotFound("User not found".to_string());
+        let anyhow_err = anyhow::Error::from(db_err);
+        let http_err = HttpError::from(anyhow_err);
+
+        assert_eq!(http_err.status_code(), StatusCode::NOT_FOUND);
+        assert!(http_err.to_string().contains("User not found"));
+    }
+
+    #[test]
+    fn test_from_anyhow_auth_error() {
+        let auth_err = AuthError::InvalidCredentials;
+        let anyhow_err = anyhow::Error::from(auth_err);
+        let http_err = HttpError::from(anyhow_err);
+
+        assert_eq!(http_err.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[test]
+    fn test_from_anyhow_pattern_not_found() {
+        let anyhow_err = anyhow::anyhow!("Resource not found");
+        let http_err = HttpError::from(anyhow_err);
+
+        assert_eq!(http_err.status_code(), StatusCode::NOT_FOUND);
+    }
+
+    #[test]
+    fn test_from_anyhow_pattern_unauthorized() {
+        let anyhow_err = anyhow::anyhow!("Unauthorized access");
+        let http_err = HttpError::from(anyhow_err);
+
+        assert_eq!(http_err.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[test]
+    fn test_from_anyhow_pattern_forbidden() {
+        let anyhow_err = anyhow::anyhow!("Forbidden: insufficient permissions");
+        let http_err = HttpError::from(anyhow_err);
+
+        assert_eq!(http_err.status_code(), StatusCode::FORBIDDEN);
+    }
+
+    #[test]
+    fn test_from_anyhow_pattern_validation() {
+        let anyhow_err = anyhow::anyhow!("Validation failed: invalid input");
+        let http_err = HttpError::from(anyhow_err);
+
+        assert_eq!(http_err.status_code(), StatusCode::BAD_REQUEST);
+    }
+
+    #[test]
+    fn test_from_anyhow_default_internal_error() {
+        let anyhow_err = anyhow::anyhow!("Some internal error");
+        let http_err = HttpError::from(anyhow_err);
+
+        assert_eq!(http_err.status_code(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 }
