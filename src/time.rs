@@ -1,11 +1,11 @@
-use chrono::{NaiveDateTime, ParseError, Utc};
+use chrono::{DateTime, NaiveDateTime, ParseError, Utc};
 
 pub fn now() -> NaiveDateTime {
     Utc::now().naive_local()
 }
 
 pub fn unix() -> u64 {
-    now().timestamp_millis() as u64
+    now().and_utc().timestamp_millis() as u64
 }
 
 pub fn from_str<T: AsRef<str>, F: ToString>(
@@ -16,7 +16,7 @@ pub fn from_str<T: AsRef<str>, F: ToString>(
 }
 
 pub fn from_unix(value: i64) -> Option<NaiveDateTime> {
-    NaiveDateTime::from_timestamp_millis(value)
+    DateTime::from_timestamp_millis(value).map(|dt| dt.naive_local())
 }
 
 pub fn format(value: NaiveDateTime) -> String {

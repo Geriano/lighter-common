@@ -1,8 +1,8 @@
 use std::fmt;
 
-use actix_web::{body::BoxBody, HttpRequest, HttpResponse, Responder, ResponseError};
+use actix_web::{HttpRequest, HttpResponse, Responder, ResponseError, body::BoxBody};
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use utoipa::{IntoResponses, ToSchema};
 
 use super::error::Error;

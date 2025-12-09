@@ -5,11 +5,10 @@ use actix_web::body::BoxBody;
 use actix_web::http::StatusCode;
 use actix_web::{HttpRequest, HttpResponse, Responder, ResponseError};
 use sea_orm::{DbErr, TransactionError};
-use serde_json::{json, Value};
-use utoipa::openapi::{ObjectBuilder, RefOr, Schema, SchemaType};
+use serde_json::{Value, json};
 use utoipa::ToSchema;
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, ToSchema)]
 pub enum Error {
     // 400
     BadRequest {
@@ -142,22 +141,5 @@ impl fmt::Display for Error {
 impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.json())
-    }
-}
-
-impl ToSchema<'_> for Error {
-    fn schema() -> (&'static str, RefOr<Schema>) {
-        let schema = ObjectBuilder::new()
-            .schema_type(SchemaType::Object)
-            .property(
-                "message",
-                ObjectBuilder::new()
-                    .schema_type(SchemaType::String)
-                    .example(Some(json!("Not found")))
-                    .build(),
-            )
-            .build();
-
-        ("Error", schema.into())
     }
 }

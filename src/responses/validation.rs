@@ -1,16 +1,13 @@
 use std::{collections::HashMap, fmt};
 
-use actix_web::{body::BoxBody, HttpRequest, HttpResponse, Responder, ResponseError};
+use actix_web::{HttpRequest, HttpResponse, Responder, ResponseError, body::BoxBody};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use utoipa::{
-    openapi::{ObjectBuilder, RefOr, Schema, SchemaType},
-    IntoResponses, ToSchema,
-};
+use utoipa::{IntoResponses, ToSchema};
 
 use super::error::Error;
 
-#[derive(Clone, Debug, Deserialize, Serialize, IntoResponses)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, IntoResponses)]
 #[response(status = 422, description = "Unprocessable Entity")]
 pub struct Validation {
     pub errors: HashMap<String, Vec<String>>,
@@ -91,41 +88,5 @@ impl Responder for Validation {
 impl fmt::Display for Validation {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", json!(self))
-    }
-}
-
-impl ToSchema<'_> for Validation {
-    fn schema() -> (&'static str, RefOr<Schema>) {
-        let errors = ObjectBuilder::new()
-            .schema_type(SchemaType::Array)
-            .to_array_builder()
-            .items(
-                ObjectBuilder::new()
-                    .schema_type(SchemaType::String)
-                    .example(Some(json!("Password must be at least 8 characters long")))
-                    .build(),
-            )
-            .items(
-                ObjectBuilder::new()
-                    .schema_type(SchemaType::String)
-                    .example(Some(json!(
-                        "Password must contain at least one uppercase letter"
-                    )))
-                    .build(),
-            )
-            .build();
-
-        let schema = ObjectBuilder::new()
-            .schema_type(SchemaType::Object)
-            .property(
-                "errors",
-                ObjectBuilder::new()
-                    .schema_type(SchemaType::Object)
-                    .property("password", errors)
-                    .build(),
-            )
-            .build();
-
-        ("Validation", schema.into())
     }
 }

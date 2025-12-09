@@ -124,7 +124,7 @@ impl Server {
 
         let server = HttpServer::new(factory)
             .workers(4)
-            .bind_rustls_021(addr, tls)?
+            .bind_rustls_0_23(addr, tls)?
             .run();
 
         Ok(server)
