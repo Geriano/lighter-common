@@ -106,3 +106,82 @@ fn default_idle_timeout() -> u64 { 600 }
 fn default_max_lifetime() -> u64 { 3600 }
 fn default_slow_query_threshold() -> u64 { 1000 }
 fn default_true() -> bool { true }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_database_config_defaults() {
+        let config = DatabaseConfig::with_defaults();
+        assert!(!config.url.is_empty());
+        assert_eq!(config.max_connections, 100);
+        assert_eq!(config.min_connections, 5);
+        assert_eq!(config.connect_timeout, 30);
+        assert_eq!(config.idle_timeout, 600);
+        assert_eq!(config.max_lifetime, 3600);
+        assert!(!config.log_queries);
+        assert_eq!(config.slow_query_threshold, 1000);
+    }
+
+    #[test]
+    fn test_database_config_validation_empty_url() {
+        let config = DatabaseConfig {
+            url: "".to_string(),
+            ..DatabaseConfig::with_defaults()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_database_config_validation_max_less_than_min() {
+        let config = DatabaseConfig {
+            max_connections: 5,
+            min_connections: 10,
+            ..DatabaseConfig::with_defaults()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_database_config_validation_zero_connect_timeout() {
+        let config = DatabaseConfig {
+            connect_timeout: 0,
+            ..DatabaseConfig::with_defaults()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_database_config_validation_valid() {
+        let config = DatabaseConfig {
+            url: "postgres://user:pass@localhost/db".to_string(),
+            max_connections: 100,
+            min_connections: 5,
+            connect_timeout: 30,
+            idle_timeout: 600,
+            max_lifetime: 3600,
+            log_queries: false,
+            slow_query_threshold: 1000,
+            migration: MigrationConfig::default(),
+        };
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_database_config_validation_equal_min_max() {
+        let config = DatabaseConfig {
+            max_connections: 10,
+            min_connections: 10,
+            ..DatabaseConfig::with_defaults()
+        };
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_migration_config_defaults() {
+        let config = MigrationConfig::default();
+        assert!(!config.auto_migrate);
+        assert!(config.strict);
+    }
+}

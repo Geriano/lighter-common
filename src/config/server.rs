@@ -63,11 +63,13 @@ pub struct TlsConfig {
 
 impl Validate for ServerConfig {
     fn validate(&self) -> Result<(), ConfigError> {
+        // Validate port range (1-65535)
         if self.port == 0 {
             return Err(ConfigError::ValidationError(
                 "server.port must be > 0".to_string()
             ));
         }
+        // Port 0 is already checked, u16 max is 65535 so we're good
 
         if self.tls.enabled {
             if self.tls.cert.is_empty() {
@@ -75,6 +77,18 @@ impl Validate for ServerConfig {
             }
             if self.tls.key.is_empty() {
                 return Err(ConfigError::MissingRequired("server.tls.key".to_string()));
+            }
+
+            // Validate TLS cert/key files exist
+            if !std::path::Path::new(&self.tls.cert).exists() {
+                return Err(ConfigError::ValidationError(
+                    format!("server.tls.cert file does not exist: {}", self.tls.cert)
+                ));
+            }
+            if !std::path::Path::new(&self.tls.key).exists() {
+                return Err(ConfigError::ValidationError(
+                    format!("server.tls.key file does not exist: {}", self.tls.key)
+                ));
             }
         }
 
@@ -107,3 +121,151 @@ fn default_max_payload_size() -> usize { 10 * 1024 * 1024 } // 10 MB
 fn default_keep_alive() -> u64 { 75 }
 fn default_client_timeout() -> u64 { 60 }
 fn default_true() -> bool { true }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn test_server_config_defaults() {
+        let config = ServerConfig::with_defaults();
+        assert_eq!(config.host, "0.0.0.0");
+        assert_eq!(config.port, 8080);
+        assert_eq!(config.workers, 0);
+        assert_eq!(config.max_payload_size, 10 * 1024 * 1024);
+        assert_eq!(config.keep_alive, 75);
+        assert_eq!(config.client_timeout, 60);
+        assert!(config.http2);
+        assert!(!config.tls.enabled);
+    }
+
+    #[test]
+    fn test_server_config_validation_zero_port() {
+        let config = ServerConfig {
+            port: 0,
+            ..ServerConfig::with_defaults()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_server_config_validation_valid_port_range() {
+        // Test minimum valid port
+        let config = ServerConfig {
+            port: 1,
+            ..ServerConfig::with_defaults()
+        };
+        assert!(config.validate().is_ok());
+
+        // Test maximum valid port (u16 max is 65535)
+        let config = ServerConfig {
+            port: 65535,
+            ..ServerConfig::with_defaults()
+        };
+        assert!(config.validate().is_ok());
+
+        // Test common port
+        let config = ServerConfig {
+            port: 8080,
+            ..ServerConfig::with_defaults()
+        };
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_server_config_validation_tls_enabled_missing_cert() {
+        let config = ServerConfig {
+            tls: TlsConfig {
+                enabled: true,
+                cert: "".to_string(),
+                key: "/path/to/key.pem".to_string(),
+                password: None,
+            },
+            ..ServerConfig::with_defaults()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_server_config_validation_tls_enabled_missing_key() {
+        let config = ServerConfig {
+            tls: TlsConfig {
+                enabled: true,
+                cert: "/path/to/cert.pem".to_string(),
+                key: "".to_string(),
+                password: None,
+            },
+            ..ServerConfig::with_defaults()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_server_config_validation_tls_enabled_files_not_exist() {
+        let config = ServerConfig {
+            tls: TlsConfig {
+                enabled: true,
+                cert: "/nonexistent/cert.pem".to_string(),
+                key: "/nonexistent/key.pem".to_string(),
+                password: None,
+            },
+            ..ServerConfig::with_defaults()
+        };
+        assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn test_server_config_validation_tls_enabled_files_exist() {
+        // Create temporary files
+        let temp_dir = std::env::temp_dir();
+        let cert_path = temp_dir.join("test_cert.pem");
+        let key_path = temp_dir.join("test_key.pem");
+
+        {
+            let mut cert_file = std::fs::File::create(&cert_path).unwrap();
+            cert_file.write_all(b"fake cert").unwrap();
+
+            let mut key_file = std::fs::File::create(&key_path).unwrap();
+            key_file.write_all(b"fake key").unwrap();
+        }
+
+        let config = ServerConfig {
+            tls: TlsConfig {
+                enabled: true,
+                cert: cert_path.to_str().unwrap().to_string(),
+                key: key_path.to_str().unwrap().to_string(),
+                password: None,
+            },
+            ..ServerConfig::with_defaults()
+        };
+        assert!(config.validate().is_ok());
+
+        // Cleanup
+        std::fs::remove_file(cert_path).ok();
+        std::fs::remove_file(key_path).ok();
+    }
+
+    #[test]
+    fn test_server_config_validation_tls_disabled() {
+        let config = ServerConfig {
+            tls: TlsConfig {
+                enabled: false,
+                cert: "".to_string(),
+                key: "".to_string(),
+                password: None,
+            },
+            ..ServerConfig::with_defaults()
+        };
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn test_tls_config_defaults() {
+        let config = TlsConfig::default();
+        assert!(!config.enabled);
+        assert!(config.cert.is_empty());
+        assert!(config.key.is_empty());
+        assert!(config.password.is_none());
+    }
+}
