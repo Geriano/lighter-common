@@ -12,6 +12,7 @@ members = ["derives", "macros"]
 default = ["postgres"]
 postgres = ["sea-orm/sqlx-postgres"]
 sqlite = ["sea-orm/sqlx-sqlite"]
+redis-cache = []
 
 [dependencies]
 lighter-common-derives = { workspace = true }
