@@ -36,6 +36,16 @@ tracing-subscriber = { workspace = true }
 utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
 uuid = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+metrics = { workspace = true }
+metrics-exporter-prometheus = { workspace = true }
+dashmap = { workspace = true }
+once_cell = { workspace = true }
+regex = { workspace = true }
+bincode = { workspace = true }
+config = { workspace = true }
 
 [workspace.dependencies]
 lighter-common-derives = { path = "derives" }
@@ -70,3 +80,29 @@ utoipa-swagger-ui = { version = "9.0.2", features = ["actix-web"] }
 uuid = { version = "1.19.0", features = ["serde", "v4"] }
 rustls = "0.23.35"
 rustls-pemfile = "2.2.0"
+
+# Error handling (CRITICAL per CLAUDE.md)
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Async runtime (CRITICAL per CLAUDE.md)
+tokio = { version = "1", features = ["full"] }
+
+# Metrics (CRITICAL per CLAUDE.md)
+metrics = "0.23"
+metrics-exporter-prometheus = "0.15"
+
+# Concurrent collections
+dashmap = "6"
+
+# Lazy initialization
+once_cell = "1.19"
+
+# Pattern matching
+regex = "1.10"
+
+# Binary serialization
+bincode = "1.3"
+
+# Configuration management
+config = "0.14"

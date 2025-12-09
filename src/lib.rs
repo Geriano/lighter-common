@@ -1,6 +1,8 @@
 pub mod api;
 pub mod base58;
+pub mod config;
 pub mod database;
+pub mod errors;
 pub mod hash;
 pub mod prelude;
 pub mod responses;
